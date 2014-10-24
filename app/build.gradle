@@ -1,0 +1,76 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 20
+    buildToolsVersion "20.0.0"
+
+    defaultConfig {
+        applicationId "com.example.yinfeng.cryptodemos"
+        minSdkVersion 16
+        targetSdkVersion 20
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release {
+            runProguard false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+
+dependencies {
+//    compile fileTree(dir: 'libs', include: "*.jar")
+    compile fileTree(dir: "$project.buildDir/libs", include: "*.jar")
+}
+def getAndroidNdk = {
+//    def ANDROID_NDK_HOME = System.getenv("ANDROID_NDK_HOME")
+    def ANDROID_NDK_HOME = "/Users/yinfeng/Documents/utils/android-ndk-r9d"
+
+    if (ANDROID_NDK_HOME == null) {
+        throw new RuntimeException("ANDROID_NDK_HOME is not right")
+    }
+
+    ANDROID_NDK_HOME
+}
+
+def ndk_args = [ "NDK_OUT=build/ndk-hack/obj", "NDK_LIBS_OUT=build/ndk-hack/lib" ]
+
+task ndkBuild( type:Exec ) {
+    commandLine = [ getAndroidNdk() + '/ndk-build', 'all' ] + ndk_args
+}
+
+task ndkClean( type:Exec ) {
+    commandLine = [ getAndroidNdk() + '/ndk-build', 'clean' ] + ndk_args
+}
+
+clean.dependsOn 'ndkClean'
+/* Hacking to add so files to aar package.
+ * Not use android gradle 0.7 NDK support. The offical NDK support can not build mutilple so files.:)
+*/
+android.libraryVariants.all { variant ->
+    /*
+     * copy the native so libs jar file to "build/bundles/libs".
+     * Then the package task will add them to aar package.
+    */
+    task ( "nativeLibsToJar${variant.name}",
+            type: Zip,
+            description: 'create a jar archive of the native libs',
+            dependsOn: ndkBuild ) {
+        destinationDir file( "$project.buildDir/libs" )
+        baseName "native-libs"
+        extension 'jar'
+        from fileTree( dir: "$project.buildDir/ndk-hack/lib", include: '**/*.so' )
+        into 'lib/'
+    }
+
+    task("Kcopy${variant.name}",
+            type: Copy,
+            dependsOn: "nativeLibsToJar${variant.name}") {
+        from "$project.buildDir/bundles/${variant.dirName}/libs/native-libs.jar"
+        into "libs/"
+    }
+
+    variant.javaCompile.dependsOn "Kcopy${variant.name}"
+}
