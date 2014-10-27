@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 using std::list;
-
 #define CRYPTO_BLOCK_SIZE 16
 
 namespace crypto

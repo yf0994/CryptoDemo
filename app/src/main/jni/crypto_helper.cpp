@@ -13,14 +13,14 @@
 
 namespace crypto
 {
-    void CryptoHelper::initDataHead(DataHead *head)
+    void initDataHead(DataHead *head)
         {
             head->magic = HEAD_MAGIC_V1;
             head->psize = 0;
             head->esize = 0;
         }
 
-        DataHead CryptoHelper::readDataHead(const char *buf,int len)
+        DataHead readDataHead(const char *buf,int len)
         {
             DataHead head;
             int s = sizeof(DataHead);
@@ -33,7 +33,7 @@ namespace crypto
             return head;
         }
 
-        bool CryptoHelper::isEncrypted(DataHead *head)
+        bool isEncrypted(DataHead *head)
         {
             return head == NULL ? false : head->magic == HEAD_MAGIC_V1;
         }
@@ -42,57 +42,71 @@ namespace crypto
     {
         const char *buf = toolkits::Toolkits::getCharPointer(env, javaBytes);
         if (buf == NULL)
-                {
-                    return NULL;
-                }
-                DataHead head = readDataHead(buf,len);
-                if(isEncrypted(&head))
-                {
-        //            LOG_I("is Encrypted");
-                    return javaBytes;
-                }
-                crypto::BlockList blockList = crypto::Utils::toBlocks(buf, len);
-                char encryptData[len];
-                memset(encryptData, 0, len);
-                crypto::Api::encryptBlocksTo(blockList,encryptData);
-        //        LOG_I("++++++[%s]+++++",encryptData);
-                int encryptLength = (int)strlen(encryptData);
-                initDataHead(&head);
-                head.psize = len;
-                head.esize = encryptLength;
-        //        LOG_I("++++++Head info %x,%d,%d",head.magic,head.psize,head.esize);
-                int size = sizeof(DataHead);
-                char *tmpBuf = (char *)calloc(1, size + encryptLength);
-                memcpy(tmpBuf, (void *)&head, size);
-                memcpy(tmpBuf + size, encryptData, encryptLength);
-
-        return toolkits::Toolkits::getByteArray(env, tmpBuf, size + encryptLength);
+        {
+            return NULL;
+        }
+        DataHead head = readDataHead(buf,len);
+        if(isEncrypted(&head))
+        {
+            return javaBytes;
+        }
+        crypto::BlockList blockList = crypto::Utils::toBlocks(buf, len);
+        char encryptData[len];
+        memset(encryptData, 0, len);
+        crypto::Api::encryptBlocksTo(blockList,encryptData);
+        int size = sizeof(DataHead);
+        int count  = len / CRYPTO_BLOCK_SIZE;
+        int rest = len % CRYPTO_BLOCK_SIZE;
+        if(rest > 0)
+        {
+            count ++;
+        }
+        int length = count * CRYPTO_BLOCK_SIZE;
+        int total = size + length;
+        char * tmpBuf = (char *)calloc(1,total);
+        if(!tmpBuf)
+        {
+            return NULL;
+        }
+        memset(tmpBuf,0,total);
+        initDataHead(&head);
+        head.psize = length;
+        head.esize = len;
+        memcpy(tmpBuf,(void *)&head,size);
+        memcpy(tmpBuf + size,encryptData,length);
+        return toolkits::Toolkits::getByteArray(env, tmpBuf, total);
     }
     jbyteArray CryptoHelper::aes_decrypt(JNIEnv *env, jclass cls, jbyteArray javaBytes, jint len)
     {
         const char *buf = toolkits::Toolkits::getCharPointer(env, javaBytes);
-
         if (buf == NULL)
-                {
-                    return NULL;
-                }
-                DataHead head = readDataHead(buf,len);
-                if (!isEncrypted(&head))
-                {
-                    //LOG_D("not encrypted");
-                    return javaBytes;
-                }
-                //        LOG_D("-----Head info %x,%d,%d:",head.magic,head.psize,head.esize);
-                int size = sizeof(DataHead);
-                char bufs[head.esize];
-                memcpy(bufs,(char *) buf + size ,head.esize);
-                //        LOG_D("------[%s]-------",bufs);
-                crypto::BlockList blockList = crypto::Utils::toBlocks(bufs, head.psize);
-
-                char * encryptData = (char *)calloc(1, head.psize);
-                memset(encryptData, 0, head.psize);
-                crypto::Api::decryptBlocksTo(blockList,encryptData);
-        return toolkits::Toolkits::getByteArray(env, encryptData, head.psize);
+        {
+             return NULL;
+        }
+        DataHead head = readDataHead(buf,len);
+        if (!isEncrypted(&head))
+        {
+             return javaBytes;
+        }
+        int length = head.psize;
+        int size = sizeof(DataHead);
+        char *bufs = (char *)calloc(1,head.psize);
+        if(!bufs)
+        {
+            return NULL;
+        }
+        memset(bufs,0,head.psize);
+        memcpy(bufs,(char *) buf + size ,length);
+        crypto::BlockList blockList = crypto::Utils::toBlocks(bufs,length);
+        char * decryptData = (char *)calloc(1,length);
+        if(!decryptData)
+        {
+            return NULL;
+        }
+        memset(decryptData, 0, length);
+        crypto::Api::decryptBlocksTo(blockList,decryptData);
+        free(bufs);
+        return toolkits::Toolkits::getByteArray(env, decryptData, head.esize);
     }
 //
     jbyteArray CryptoHelper::sm4_encrypt(JNIEnv *env, jclass cls, jbyteArray javaBytes, jint len)
@@ -102,30 +116,37 @@ namespace crypto
         {
              return NULL;
         }
-        LOGI("[%s]",buf);
         DataHead head = readDataHead(buf,len);
         if(isEncrypted(&head))
         {
-        //            LOG_I("is Encrypted");
-             return javaBytes;
+            return javaBytes;
         }
         crypto::BlockList blockList = crypto::Utils::toBlocks(buf, len);
         char encryptData[len];
         memset(encryptData, 0, len);
-        crypto::Apis::encryptBlocksTos(blockList,encryptData);
+        crypto::Apis::encryptBlocksTo(blockList,encryptData);
         int encryptLength = (int)strlen(encryptData);
         int size = sizeof(DataHead);
         initDataHead(&head);
-        head.psize = len;
-        head.esize = encryptLength;
-        int total = size + encryptLength;
-        //        LOG_I("++++++Head info %x,%d,%d,%d",head.magic,head.psize,head.esize,total);
 
-        //        char tmpBuf[total + 1];
-//        char * tmpBuf = (char *)calloc(1, total);
-        char tmpBuf[total];
+
+        int count = len /CRYPTO_BLOCK_SIZE;
+        int rest = len % CRYPTO_BLOCK_SIZE;
+        if(rest > 0)
+        {
+             count++;
+        }
+        int length = count * CRYPTO_BLOCK_SIZE;
+        int total = size + length;
+        char * tmpBuf = (char *)calloc(1,total);
+        if(!tmpBuf)
+        {
+            return NULL;
+        }
+        head.psize = length;
+        head.esize = len;
         memcpy(tmpBuf, (void *)&head, size);
-        memcpy(tmpBuf + size, encryptData, encryptLength);
+        memcpy(tmpBuf + size, encryptData, length);
         return toolkits::Toolkits::getByteArray(env, tmpBuf, total);
     }
     jbyteArray CryptoHelper::sm4_decrpyt(JNIEnv *env, jclass cls, jbyteArray javaBytes, jint len)
@@ -138,22 +159,21 @@ namespace crypto
         DataHead head = readDataHead(buf,len);
         if (!isEncrypted(&head))
         {
-        //            LOG_D("not encrypted");
              return javaBytes;
         }
-        //        LOG_D("-----Head info %x,%d,%d:",head.magic,head.psize,head.esize);
         int size = sizeof(DataHead);
-        char bufs[head.esize];
-        memset(bufs,0,head.esize);
-        memcpy(bufs,(char *) buf + size ,head.esize);
-        //        LOG_D("------[%s]-------",bufs);
+        char bufs[head.psize];
+        memset(bufs,0,head.psize);
+        memcpy(bufs, buf + size ,head.psize);
         crypto::BlockList blockList = crypto::Utils::toBlocks(bufs, head.psize);
-                //        char * decryptData = (char *)calloc(1, head.psize);
-//        char * decryptData = (char *)calloc(1, head.psize);
-        char decryptData[head.psize];
+        char * decryptData = (char *)calloc(1,head.psize);
+        if(!decryptData)
+        {
+            return NULL;
+        }
         memset(decryptData, 0, head.psize);
-        crypto::Apis::decryptBlocksTos(blockList,decryptData);
-        return toolkits::Toolkits::getByteArray(env, decryptData, head.psize);
+        crypto::Apis::decryptBlocksTo(blockList,decryptData);
+        return toolkits::Toolkits::getByteArray(env, decryptData, head.esize);
     }
 
 

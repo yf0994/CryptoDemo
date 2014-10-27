@@ -56,11 +56,12 @@ namespace crypto
         return true;
     }
 
-    bool Apis::encryptBlocksTos(BlockList const &blocks,char *buf)
+    bool Apis::encryptBlocksTo(BlockList &blocks,char * buf)
     {
         BlockListConstIterator iter;
         for(iter = blocks.cbegin(); iter != blocks.cend(); ++iter)
         {
+            
             unsigned char tmpBuf[CRYPTO_BLOCK_SIZE];
             memcpy(tmpBuf, iter -> constData(), CRYPTO_BLOCK_SIZE);
             SM4::Apis::encrypt(tmpBuf,CRYPTO_BLOCK_SIZE,tmpBuf);
@@ -70,7 +71,7 @@ namespace crypto
         return true;
     }
     
-    bool Apis::decryptBlocksTos(BlockList const &blocks,char *buf)
+    bool Apis::decryptBlocksTo(BlockList &blocks,char *buf)
     {
         BlockListConstIterator iter;
         for(iter = blocks.cbegin();iter != blocks.cend(); ++iter)

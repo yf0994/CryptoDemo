@@ -32,8 +32,8 @@ LOCAL_EXPORT_C_INCLUDES := \
 LOCAL_EXPORT_LDLIBS := \
 	-llog \
 
+
 LOCAL_STATIC_LIBRARIES := \
 	libcryptostatic \
-
 
 include $(BUILD_SHARED_LIBRARY)

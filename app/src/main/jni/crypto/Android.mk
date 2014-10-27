@@ -20,6 +20,7 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH) \
+	$(LOCAL_PATH)/.. \
     $(LOCAL_PATH)/aes \
 	$(LOCAL_PATH)/sm4 \
 	$(LOCAL_PATH)/include \
@@ -27,6 +28,9 @@ LOCAL_C_INCLUDES := \
 
 LOCAL_CFLAGS := \
 	-D_USE_AES_=1
+
+LOCAL_EXPORT_LDLIBS := \
+	-llog \
 
 LOCAL_STATIC_LIBRARIES := \
 	libaesstatic \

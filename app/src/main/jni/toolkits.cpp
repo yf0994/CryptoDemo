@@ -1,6 +1,6 @@
 
 #include <toolkits.h>
-
+#include <stdio.h>
 #include "log.h"
 
 namespace toolkits
@@ -11,6 +11,7 @@ jbyteArray Toolkits::getByteArray(JNIEnv *env, const char *buf, int len)
     jbyteArray byteArray = env->NewByteArray(len);
     const jbyte *bytes = (const jbyte *)buf;
     env->SetByteArrayRegion(byteArray, 0, len, bytes);
+    free((void *)buf);
     return byteArray;
 }
 
@@ -26,6 +27,7 @@ jcharArray Toolkits::getCharArray(JNIEnv *env, const char *buf, int len)
     const jchar *nbuf = (const jchar *)buf;
     jcharArray chars = env->NewCharArray(nlen);
     env->SetCharArrayRegion(chars, 0, nlen, nbuf);
+//    free((void *)buf);
     return chars;
 }
 

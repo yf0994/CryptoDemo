@@ -11,7 +11,7 @@ typedef struct DataHead
         uint32_t magic;//isEncrypted
         uint32_t psize;//plain text length
         uint32_t esize;//cliper text length
-    } DataHead;
+    }__attribute__((packed)) DataHead;
 
     class CryptoHelper
     {
@@ -27,9 +27,9 @@ typedef struct DataHead
 
         static void registerCryptpHelper(JNIEnv *env);
 
-        static void initDataHead(DataHead *head);
-        static DataHead readDataHead(const char *buf,int len);
-        static bool isEncrypted(DataHead *head);
+//        static void initDataHead(DataHead *head);
+//        static DataHead readDataHead(const char *buf,int len);
+//        static bool isEncrypted(DataHead *head);
     };
 }
 
